@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Omo Siêu Tốc — Khung chơi 16:9</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #021226; }
+    iframe { display: block; width: 100%; height: 100%; border: 0; }
+  </style>
+</head>
+<body>
+  <iframe id="game-frame" src="omo_si_u_t_c_laundry_rush_fixed.html" title="Omo Siêu Tốc" allow="fullscreen" allowfullscreen></iframe>
+  <script>
+    // Apply the compact level-picker layout to the existing same-origin game page.
+    const frame = document.getElementById('game-frame');
+    frame.addEventListener('load', () => {
+      const doc = frame.contentDocument;
+      if (!doc || doc.getElementById('fit-16-9-overrides')) return;
+      const style = doc.createElement('style');
+      style.id = 'fit-16-9-overrides';
+      style.textContent = `
+        #app-container {
+          width: min(100vw, 177.78vh) !important;
+          height: min(56.25vw, 100vh) !important;
+          aspect-ratio: 16 / 9;
+        }
+        #lv.ov {
+          padding: clamp(8px, 1.1vw, 20px);
+          overflow: hidden;
+          justify-content: flex-start;
+          align-items: stretch;
+          gap: clamp(4px, .55vw, 10px);
+        }
+        #lv > h1 {
+          flex: 0 0 auto;
+          margin: 0 !important;
+          font-size: clamp(22px, 2.4vw, 44px) !important;
+          line-height: 1.05;
+        }
+        #lvGrid {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          align-items: stretch;
+          gap: clamp(6px, .75vw, 14px);
+          width: 100%;
+          max-width: none;
+          min-height: 0;
+          flex: 1 1 auto;
+          margin: 4px auto;
+        }
+        .lv-card {
+          width: auto;
+          min-width: 0;
+          min-height: 0;
+          padding: clamp(6px, .65vw, 12px);
+          overflow: hidden;
+        }
+        .lv-thumb {
+          width: 100%;
+          height: clamp(72px, 16vh, 185px);
+          aspect-ratio: 16 / 9;
+          object-fit: cover;
+          margin-bottom: 4px;
+        }
+        .lv-title { font-size: clamp(14px, 1.25vw, 23px); line-height: 1.05; margin: 3px 0; }
+        .lv-stars { font-size: clamp(17px, 1.5vw, 27px); line-height: 1; margin: 3px 0; }
+        .lv-desc {
+          min-height: 0;
+          margin: 4px 0 6px;
+          font-size: clamp(12px, .95vw, 17px);
+          line-height: 1.1;
+          display: -webkit-box;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 3;
+          overflow: hidden;
+        }
+        .lv-goal { margin-bottom: 6px; padding: 4px; font-size: clamp(12px, .95vw, 17px); }
+        .lv-play { max-width: 100%; padding: 5px 8px; font-size: clamp(13px, 1.1vw, 20px); }
+        #lv > .btn { flex: 0 0 auto; align-self: center; margin: 2px; padding: 6px 16px; font-size: clamp(16px, 1.5vw, 26px); }
+        @media (max-width: 1100px) {
+          #lv.ov { overflow-y: auto; }
+          #lvGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); flex: 0 0 auto; }
+          .lv-thumb { height: clamp(80px, 15vh, 150px); }
+        }
+        @media (max-height: 600px) and (min-width: 1101px) {
+          #lv.ov { padding: 6px 12px; gap: 2px; }
+          .lv-thumb { height: 13vh; }
+          .lv-desc { -webkit-line-clamp: 2; }
+        }
+      `;
+      doc.head.appendChild(style);
+    });
+  </script>
+</body>
+</html>
