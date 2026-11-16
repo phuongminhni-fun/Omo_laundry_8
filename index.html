@@ -2,10 +2,11 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#021226">
   <title>OMO Siêu Tốc</title>
   <style>
+    * { box-sizing: border-box; }
     html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #021226; }
     #game-frame { display: block; width: 100%; height: 100%; border: 0; }
   </style>
@@ -13,5 +14,121 @@
 </head>
 <body>
   <iframe id="game-frame" src="./omo_si_u_t_c_laundry_rush_fixed.html" title="OMO Siêu Tốc — Christmas Laundry Rush" allow="autoplay; fullscreen" allowfullscreen></iframe>
+  <script>
+    // Keep every menu inside the same centered 16:9 game frame, without page scrolling.
+    const gameFrame = document.getElementById('game-frame');
+    gameFrame.addEventListener('load', () => {
+      const doc = gameFrame.contentDocument;
+      if (!doc || doc.getElementById('site-fit-layout')) return;
+
+      const style = doc.createElement('style');
+      style.id = 'site-fit-layout';
+      style.textContent = `
+        #app-container {
+          width: min(100vw, 177.7778vh) !important;
+          height: min(56.25vw, 100vh) !important;
+          aspect-ratio: 16 / 9;
+        }
+
+        /* Character setup / title screen */
+        #title.ov {
+          padding: clamp(8px, 1.1vw, 18px);
+          overflow: hidden;
+          justify-content: space-evenly;
+          gap: clamp(3px, .45vw, 8px);
+        }
+        #title > div:first-child { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+        #title h1 { font-size: clamp(25px, 3.2vw, 56px); line-height: 1; margin: 2px 0; }
+        #title .bt-icon { width: clamp(24px, 3.3vw, 48px); height: clamp(40px, 5.2vw, 70px); margin: 0 clamp(4px, .7vw, 12px); }
+        #title .sub { flex: 0 0 auto; margin: 0; font-size: clamp(13px, 1.55vw, 24px); line-height: 1.1; }
+        #cards { flex: 0 1 auto; flex-wrap: nowrap; gap: clamp(8px, 1.2vw, 20px); margin: 2px 0; }
+        #cards .card {
+          width: min(280px, 38vw);
+          padding: clamp(7px, .8vw, 14px);
+          font-size: clamp(13px, 1.25vw, 18px);
+        }
+        #cards .card h3 { font-size: clamp(17px, 1.7vw, 24px); margin-bottom: 4px; }
+        #cards .pv { width: clamp(42px, 5.5vw, 64px); height: clamp(62px, 8vw, 90px); margin-bottom: 3px; }
+        #cards .nm { font-size: clamp(14px, 1.4vw, 19px); margin: 3px 0; padding: 3px 6px; }
+        #cards .sw { gap: 4px; }
+        #cards .sw button { width: clamp(17px, 2vw, 24px); height: clamp(17px, 2vw, 24px); }
+        #title > div[style*="margin: 8px"] { flex: 0 0 auto; margin: 2px 0 !important; }
+        #title .btn { font-size: clamp(15px, 1.8vw, 25px); padding: 5px clamp(10px, 1.6vw, 24px); margin: 3px; }
+        #title #go { font-size: clamp(19px, 2.4vw, 34px) !important; padding: 6px clamp(16px, 2.5vw, 36px) !important; }
+        #title .how {
+          flex: 0 1 auto;
+          width: min(820px, 94%);
+          max-height: 25%;
+          overflow: auto;
+          margin: 2px auto;
+          padding: clamp(6px, .7vw, 12px) clamp(9px, 1vw, 16px);
+          font-size: clamp(11px, 1.15vw, 16px);
+          line-height: 1.2;
+        }
+        #title .how > div { gap: 5px 12px !important; }
+
+        /* Level picker: all five cards fit in the game frame on desktop. */
+        #lv.ov {
+          padding: clamp(8px, 1.1vw, 18px);
+          overflow: hidden;
+          justify-content: flex-start;
+          align-items: stretch;
+          gap: clamp(4px, .55vw, 9px);
+        }
+        #lv > h1 {
+          flex: 0 0 auto;
+          margin: 0 !important;
+          font-size: clamp(22px, 2.6vw, 44px) !important;
+          line-height: 1.05;
+        }
+        #lvGrid {
+          display: grid;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          align-items: stretch;
+          gap: clamp(6px, .75vw, 14px);
+          width: 100%; max-width: none; min-height: 0;
+          flex: 1 1 auto;
+          margin: 4px auto;
+        }
+        .lv-card {
+          width: auto; min-width: 0; min-height: 0;
+          padding: clamp(6px, .65vw, 12px);
+          overflow: hidden;
+        }
+        .lv-thumb {
+          width: 100%; height: clamp(72px, 16vh, 185px);
+          aspect-ratio: 16 / 9; object-fit: cover;
+          margin-bottom: 4px;
+        }
+        .lv-title { font-size: clamp(14px, 1.25vw, 23px); line-height: 1.05; margin: 3px 0; }
+        .lv-stars { font-size: clamp(17px, 1.5vw, 27px); line-height: 1; margin: 3px 0; }
+        .lv-desc {
+          min-height: 0; margin: 4px 0 6px;
+          font-size: clamp(12px, .95vw, 17px); line-height: 1.1;
+          display: -webkit-box; -webkit-box-orient: vertical;
+          -webkit-line-clamp: 3; overflow: hidden;
+        }
+        .lv-goal { margin-bottom: 6px; padding: 4px; font-size: clamp(12px, .95vw, 17px); }
+        .lv-play { max-width: 100%; padding: 5px 8px; font-size: clamp(13px, 1.1vw, 20px); }
+        #lv > .btn { flex: 0 0 auto; align-self: center; margin: 2px; padding: 6px 16px; font-size: clamp(16px, 1.5vw, 26px); }
+
+        @media (max-width: 900px) {
+          #title.ov, #lv.ov { overflow-y: auto; }
+          #cards { flex-wrap: wrap; }
+          #lvGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); flex: 0 0 auto; }
+          .lv-thumb { height: clamp(80px, 15vh, 150px); }
+        }
+        @media (max-height: 600px) and (min-width: 901px) {
+          #title.ov, #lv.ov { padding: 5px 10px; gap: 2px; }
+          #cards .card { padding: 5px; }
+          #cards .pv { height: 50px; }
+          #title .how { max-height: 22%; }
+          .lv-thumb { height: 13vh; }
+          .lv-desc { -webkit-line-clamp: 2; }
+        }
+      `;
+      doc.head.appendChild(style);
+    });
+  </script>
 </body>
 </html>
