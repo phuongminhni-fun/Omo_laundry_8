@@ -117,6 +117,7 @@ kbd { background: var(--wh); color: var(--db); padding: 2px 6px; border-radius: 
 /* Game View Canvas Area */
 #game { display: none; position: relative; width: 100%; height: 100%; flex-direction: column; background: #000; }
 #c { width: 100%; height: 100%; image-rendering: pixelated; display: block; }
+#c:focus { outline: none; }
 #gamebar {
   position: absolute; top: 12px; right: 16px; z-index: 5;
   display: flex; align-items: center; gap: 10px;
@@ -192,7 +193,7 @@ kbd { background: var(--wh); color: var(--db); padding: 2px 6px; border-radius: 
       <button class="btn alt" id="fullBtn">⛶ TOÀN MÀN HÌNH</button>
     </div>
     <!-- 1920 x 1080 Native Game Canvas -->
-    <canvas id="c" width="1920" height="1080"></canvas>
+    <canvas id="c" width="1920" height="1080" tabindex="0" aria-label="Màn chơi OMO Siêu Tốc"></canvas>
   </div>
 </div>
 
@@ -244,7 +245,7 @@ LV.forEach(l=>l.burnT=20);
 const MAXI=3;
 let slowT=0, speedT=0, multT=0, puddles=[], carryT=0;
 let best=[0,0,0]; try{ best=JSON.parse(localStorage.getItem('omo_v7_best'))||[0,0,0] }catch(e){}
-let mode=2, S='title', paused=false, keys={}, pl, st, obs, sol, orders, fx, score, tl, spT, oid, act, lv=0, cd=0, last=0, AC, LF='', bgmOn=true, bgmTimer=0, bgmStep=0, reindeers=[], polarBear=null, gifts=[], giftClock=16, boostText='', boostTextT=0, scoreMult=1;
+let mode=2, S='title', paused=false, keys=new Set(), pl, st, obs, sol, orders, fx, score, tl, spT, oid, act, lv=0, cd=0, last=0, AC, LF='', bgmOn=true, bgmTimer=0, bgmStep=0, reindeers=[], polarBear=null, gifts=[], giftClock=16, boostText='', boostTextT=0, scoreMult=1;
 
 // Dynamic Snowfall System (Scaled for 1920x1080 HD)
 const snow=Array.from({length:120}, (_,i)=>({
@@ -473,7 +474,7 @@ function showLv(){
 $('go').onclick=showLv; $('home').onclick=showLv; $('again').onclick=()=>start(lv); $('next').onclick=()=>start(lv+1);
 
 function syncPauseButton(){ const b=$('pauseBtn'); if(b) b.textContent=paused?'▶ TIẾP TỤC':'Ⅱ TẠM DỪNG'; }
-function returnHome(){ paused=false; keys={}; S='title'; $('game').style.display='none'; $('over').classList.add('hide'); $('lv').classList.add('hide'); $('title').classList.remove('hide'); startHomeJingle(); }
+function returnHome(){ paused=false; keys.clear(); S='title'; $('game').style.display='none'; $('over').classList.add('hide'); $('lv').classList.add('hide'); $('title').classList.remove('hide'); startHomeJingle(); }
 
 // Fullscreen Toggle
 $('fullBtn').onclick=()=>{
@@ -485,10 +486,11 @@ $('fullBtn').onclick=()=>{
 };
 
 async function start(i){
-  stopHomeJingle(); lv=i; document.body.classList.remove('neon-speed'); reset(); buildBg(); S='play'; paused=false; cd=3; keys={}; bgmTimer=0; bgmStep=0;
+  stopHomeJingle(); lv=i; document.body.classList.remove('neon-speed'); reset(); buildBg(); S='play'; paused=false; cd=3; keys.clear(); bgmTimer=0; bgmStep=0;
   $('lv').classList.add('hide'); $('over').classList.add('hide'); $('title').classList.add('hide');
   $('game').style.display='flex'; syncPauseButton();
   if(!document.fullscreenElement){ try{ await $('app-container').requestFullscreen(); }catch(e){} }
+  cv.focus({preventScroll:true});
 }
 
 $('pauseBtn').onclick=()=>{ if(S==='play'){ paused=!paused; syncPauseButton(); } };
@@ -609,23 +611,35 @@ function use(p){
 }
 
 function dash(p){ if(p.dc<=0){p.ds=.18; p.dc=.8; beep(300,.06,'sawtooth');} }
-const dn=(i,k)=>KC[i][k].some(c=>keys[c])||(mode==1&&i==act&&KC[1-i][k].some(c=>keys[c]));
-const mvd=(i,d)=>keys[MVK[i][d]]||(mode==1&&i==act&&keys[MVK[1-i][d]]);
+const dn=(i,k)=>KC[i][k].some(c=>keys.has(c))||(mode==1&&i==act&&KC[1-i][k].some(c=>keys.has(c)));
+const mvd=(i,d)=>keys.has(MVK[i][d])||(mode==1&&i==act&&keys.has(MVK[1-i][d]));
 
-function canonicalKey(e){ return e.code || ''; }
+function canonicalKey(e){
+  if(e.code)return e.code;
+  const k=e.key||'';
+  if(k===' ')return 'Space';
+  if(k.length===1&&/[a-z]/i.test(k))return 'Key'+k.toUpperCase();
+  const map={Control:'ControlLeft',Shift:'ShiftLeft',Enter:'Enter',Escape:'Escape',Tab:'Tab',ArrowUp:'ArrowUp',ArrowDown:'ArrowDown',ArrowLeft:'ArrowLeft',ArrowRight:'ArrowRight','/':'Slash'};
+  if(map[k])return map[k];
+  const c=e.keyCode||e.which||0;
+  if(c>=65&&c<=90)return 'Key'+String.fromCharCode(c);
+  return ({9:'Tab',13:'Enter',16:'ShiftLeft',17:'ControlLeft',27:'Escape',32:'Space',37:'ArrowLeft',38:'ArrowUp',39:'ArrowRight',40:'ArrowDown',191:'Slash'})[c]||'';
+}
+const preventGameKeys=new Set(['Space','Tab','Enter','NumpadEnter','Slash','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ControlLeft','ControlRight']);
 addEventListener('keydown',e=>{
-  const code=canonicalKey(e); if(!code)return;
-  if(['Space','Tab','Enter','Slash','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(code))e.preventDefault();
-  if(keys[code])return; keys[code]=true;
-  if(S!='play')return;
+  const code=canonicalKey(e); if(!code||S!=='play')return;
+  if(preventGameKeys.has(code))e.preventDefault();
+  const wasDown=keys.has(code); keys.add(code);
+  if(wasDown||e.repeat)return;
   if(code==='Escape'||code==='KeyP'){ paused=!paused; syncPauseButton(); return; }
   if(code==='KeyM'){ bgmOn=!bgmOn; txt(1120,520,bgmOn?'Bật nhạc Noel ♪':'Tắt nhạc',CY); return; }
   if(paused||cd>0)return;
   if(mode==1&&code==='Tab'){ act=1-act; beep(700,.05); return; }
   KC.forEach((k,i)=>{ const p=mode==2?pl[i]:pl[act]; if(k.a.includes(code))use(p); if(k.q.includes(code))dash(p); });
-});
-addEventListener('keyup',e=>{ const code=canonicalKey(e); if(code)delete keys[code]; });
-addEventListener('blur',()=>{ keys={}; if(S=='play'&&cd<=0) paused=true; });
+},{capture:true});
+addEventListener('keyup',e=>{const code=canonicalKey(e);if(code)keys.delete(code);},{capture:true});
+addEventListener('blur',()=>{keys.clear();if(S==='play'&&cd<=0){paused=true;syncPauseButton();}},{capture:true});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)keys.clear();});
 
 function mv(p,dx,dy){
   for(const [ax,ay] of [[dx,0],[0,dy]]){
