@@ -10,6 +10,67 @@
       const game = frame.contentWindow;
       if (!game || typeof game.playMusicNote !== 'function') return;
 
+      // Patch movement once to avoid Player 1 getting stuck when both players move at the same time.
+      if (!game.__OMO_MOVEMENT_FIX) {
+        game.__OMO_MOVEMENT_FIX = true;
+        game.eval(`
+          function mv(p, dx, dy) {
+            const maxStep = 8;
+            const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / maxStep));
+            const stepX = dx / steps;
+            const stepY = dy / steps;
+
+            for (let i = 0; i < steps; i++) {
+              const nx = p.x + stepX;
+              const boxX = { x: nx + 8, y: p.y + 36, w: 32, h: 28 };
+              const collidesWithPlayerX = pl.some(other => {
+                if (other === p) return false;
+                const otherBox = { x: other.x + 8, y: other.y + 36, w: 32, h: 28 };
+                return hit(boxX, otherBox);
+              });
+
+              if (
+                boxX.x >= 368 &&
+                boxX.x + boxX.w <= 1912 &&
+                boxX.y >= 80 &&
+                boxX.y + boxX.h <= 944 &&
+                !sol.some(s => hit(boxX, s)) &&
+                !collidesWithPlayerX
+              ) {
+                p.x = nx;
+              }
+
+              const ny = p.y + stepY;
+              const boxY = { x: p.x + 8, y: ny + 36, w: 32, h: 28 };
+              const collidesWithPlayerY = pl.some(other => {
+                if (other === p) return false;
+                const otherBox = { x: other.x + 8, y: other.y + 36, w: 32, h: 28 };
+                return hit(boxY, otherBox);
+              });
+
+              if (
+                boxY.x >= 368 &&
+                boxY.x + boxY.w <= 1912 &&
+                boxY.y >= 80 &&
+                boxY.y + boxY.h <= 944 &&
+                !sol.some(s => hit(boxY, s)) &&
+                !collidesWithPlayerY
+              ) {
+                p.y = ny;
+              }
+            }
+          }
+
+          cv.addEventListener('pointerdown', () => {
+            cv.focus({ preventScroll: true });
+          });
+
+          window.addEventListener('blur', () => {
+            keys.clear();
+          }, true);
+        `);
+      }
+
       // G4 C5 C5 D5 C5 B4 A4 A4 D5 D5 E5 D5 C5 B4 G4 G4
       // E5 E5 F5 E5 D5 C5 A4 G4 G4 A4 D5 B4 C5
       const melody = [392, 523.25, 523.25, 587.33, 523.25, 493.88,
@@ -41,7 +102,6 @@
           lead.start(now);
           lead.stop(now + length * 0.9);
 
-          // Soft octave bass accompaniment.
           const bass = audioContext.createOscillator();
           const bassGain = audioContext.createGain();
           bass.type = 'sine';
