@@ -10,64 +10,66 @@
       const game = frame.contentWindow;
       if (!game || typeof game.playMusicNote !== 'function') return;
 
-      // Patch movement once to avoid Player 1 getting stuck when both players move at the same time.
-      if (!game.__OMO_MOVEMENT_FIX) {
-        game.__OMO_MOVEMENT_FIX = true;
+      // Fit the 1920x1080 game viewport to the available display and keep menus
+      // inside it instead of allowing the page/overlay to grow vertically.
+      const fitStyle = game.document.createElement('style');
+      fitStyle.id = 'omo-viewport-fit-fix';
+      fitStyle.textContent = `
+        html, body {
+          width: 100%; height: 100%; min-height: 0; margin: 0; padding: 0;
+          overflow: hidden !important;
+        }
+        #app-container {
+          width: min(100vw, 177.7778vh) !important;
+          height: min(100vh, 56.25vw) !important;
+          max-width: none !important; max-height: none !important;
+          aspect-ratio: 16 / 9;
+        }
+        .ov {
+          min-height: 0; padding: clamp(8px, 1.25vw, 20px) !important;
+          overflow: hidden !important;
+        }
+        #title { justify-content: center; }
+        #title h1 { font-size: clamp(28px, 4vw, 58px) !important; }
+        #title .sub { font-size: clamp(13px, 1.6vw, 22px); margin-bottom: 6px; }
+        #cards { gap: clamp(8px, 1.2vw, 18px); margin: 6px 0; }
+        .card { width: clamp(180px, 23vw, 280px); padding: clamp(8px, 1vw, 14px); font-size: clamp(14px, 1.4vw, 18px); }
+        .card h3 { font-size: clamp(17px, 1.8vw, 23px); }
+        .pv { width: clamp(44px, 5vw, 64px); height: clamp(68px, 7.5vw, 88px); margin-bottom: 4px; }
+        .how { max-width: min(820px, 95%); margin: 6px auto; padding: 8px 12px; font-size: clamp(12px, 1.25vw, 16px); }
+        #lv { justify-content: flex-start; }
+        #lv > h1 { flex: 0 0 auto; font-size: clamp(24px, 3vw, 42px) !important; margin: 0 0 4px !important; }
+        #lvGrid.lv-grid {
+          flex: 1 1 auto; min-height: 0; width: min(100%, 1100px); max-width: 1100px;
+          display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-rows: repeat(2, minmax(0, 1fr)); align-content: stretch;
+          gap: clamp(6px, .9vw, 14px); margin: 4px auto; overflow: hidden;
+        }
+        .lv-card {
+          width: auto; min-width: 0; min-height: 0; padding: clamp(6px, .8vw, 12px);
+          overflow: hidden; justify-content: space-between;
+        }
+        .lv-thumb { width: 100%; height: auto; max-height: min(17vh, 185px); margin-bottom: 3px; }
+        .lv-title { font-size: clamp(13px, 1.45vw, 20px); margin: 2px 0; }
+        .lv-stars { font-size: clamp(17px, 2vw, 26px); margin: 0; }
+        .lv-desc { min-height: 0; font-size: clamp(11px, 1.1vw, 15px); margin: 3px 0 5px; }
+        .lv-goal { padding: 4px; font-size: clamp(11px, 1.1vw, 15px); margin-bottom: 5px; }
+        .lv-play { max-width: 100%; font-size: clamp(12px, 1.2vw, 17px); padding: 5px 8px; }
+        #backTitle { flex: 0 0 auto; margin: 3px; font-size: clamp(14px, 1.5vw, 20px); padding: 5px 12px; }
+        @media (max-aspect-ratio: 4/3) {
+          #lvGrid.lv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(3, minmax(0, 1fr)); }
+          .lv-thumb { max-height: 13vh; }
+        }
+      `;
+      game.document.head.appendChild(fitStyle);
+
+      // Keep input focus in the game canvas and clear stale pressed-key state
+      // whenever the game window loses focus.
+      if (!game.__OMO_INPUT_FOCUS_FIX) {
+        game.__OMO_INPUT_FOCUS_FIX = true;
         game.eval(`
-          function mv(p, dx, dy) {
-            const maxStep = 8;
-            const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / maxStep));
-            const stepX = dx / steps;
-            const stepY = dy / steps;
-
-            for (let i = 0; i < steps; i++) {
-              const nx = p.x + stepX;
-              const boxX = { x: nx + 8, y: p.y + 36, w: 32, h: 28 };
-              const collidesWithPlayerX = pl.some(other => {
-                if (other === p) return false;
-                const otherBox = { x: other.x + 8, y: other.y + 36, w: 32, h: 28 };
-                return hit(boxX, otherBox);
-              });
-
-              if (
-                boxX.x >= 368 &&
-                boxX.x + boxX.w <= 1912 &&
-                boxX.y >= 80 &&
-                boxX.y + boxX.h <= 944 &&
-                !sol.some(s => hit(boxX, s)) &&
-                !collidesWithPlayerX
-              ) {
-                p.x = nx;
-              }
-
-              const ny = p.y + stepY;
-              const boxY = { x: p.x + 8, y: ny + 36, w: 32, h: 28 };
-              const collidesWithPlayerY = pl.some(other => {
-                if (other === p) return false;
-                const otherBox = { x: other.x + 8, y: other.y + 36, w: 32, h: 28 };
-                return hit(boxY, otherBox);
-              });
-
-              if (
-                boxY.x >= 368 &&
-                boxY.x + boxY.w <= 1912 &&
-                boxY.y >= 80 &&
-                boxY.y + boxY.h <= 944 &&
-                !sol.some(s => hit(boxY, s)) &&
-                !collidesWithPlayerY
-              ) {
-                p.y = ny;
-              }
-            }
-          }
-
-          cv.addEventListener('pointerdown', () => {
-            cv.focus({ preventScroll: true });
-          });
-
-          window.addEventListener('blur', () => {
-            keys.clear();
-          }, true);
+          cv.addEventListener('pointerdown', () => cv.focus({ preventScroll: true }));
+          window.addEventListener('blur', () => keys.clear(), true);
         `);
       }
 
