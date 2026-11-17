@@ -632,11 +632,11 @@ function use(p){
   return false;
 }
 
-function dash(p){ if(p.dc<=0){p.ds=.18; p.dc=.8; beep(300,.06,'sawtooth'); return true;} return false; }
-const keyTime=new Map(), imeHoldUntil=new Map();
-let keySeq=0;
+function dash(p){ if(p.dc<=0){p.ds=.18; p.dc=.55; beep(300,.06,'sawtooth'); return true;} return false; }
+const keyTime=new Map(), imeHoldUntil=new Map(), lastImeKeyDown=new Map();
+let keySeq=0, lastImeTime=0;
 function clearKeys(){
-  keys.clear(); keyTime.clear(); imeHoldUntil.clear();
+  keys.clear(); keyTime.clear(); imeHoldUntil.clear(); lastImeKeyDown.clear(); lastImeTime=0;
 }
 const dn=(i,k)=>KC[i][k].some(c=>keys.has(c))||(mode==1&&i==act&&KC[1-i][k].some(c=>keys.has(c)));
 function dirTime(i,d){
@@ -661,17 +661,27 @@ const TELEX_KEY_MAP={
   'ê':'KeyE','Ê':'KeyE',
   'ả':'KeyR','Ả':'KeyR','ẳ':'KeyR','Ẳ':'KeyR','ẩ':'KeyR','Ẩ':'KeyR','ử':'KeyR','Ử':'KeyR','ẻ':'KeyR','Ẻ':'KeyR','ể':'KeyR','Ể':'KeyR','ỏ':'KeyR','Ỏ':'KeyR','ổ':'KeyR','Ổ':'KeyR','ở':'KeyR','Ở':'KeyR','ủ':'KeyR','Ủ':'KeyR','ỉ':'KeyR','Ỉ':'KeyR','ỷ':'KeyR','Ỷ':'KeyR'
 };
+const IGNORED_IME_KEYS=new Set(['Backspace','\u202F','\u200C','\u200B','Dead','Process','Unidentified']);
 function canonicalKey(e){
-  if(e.code&&e.code!=='Unidentified')return e.code;
   const k=e.key||'';
+  if(e.code==='Backspace'||IGNORED_IME_KEYS.has(k)){
+    if(e.code==='Backspace'||k==='Backspace'||k==='\u202F'||k==='\u200C'||k==='\u200B') lastImeTime=performance.now();
+    return '';
+  }
   if(TELEX_KEY_MAP[k])return TELEX_KEY_MAP[k];
+  if(k.length===2&&(!e.code||e.code==='KeyA'||e.code==='Unidentified')){
+    const lastCh=k[1];
+    if(TELEX_KEY_MAP[lastCh])return TELEX_KEY_MAP[lastCh];
+    if(/[a-z]/i.test(lastCh))return 'Key'+lastCh.toUpperCase();
+  }
+  if(k.length===1&&/[a-z]/i.test(k))return 'Key'+k.toUpperCase();
+  if(e.code&&e.code!=='Unidentified')return e.code;
   if(k===' ')return 'Space';
   if(k==='.')return 'Period';
   if(k===',')return 'Comma';
   if(k==="'"||k==='"')return 'Quote';
   if(k===';'||k===':')return 'Semicolon';
   if(k==='/'||k==='?')return 'Slash';
-  if(k.length===1&&/[a-z]/i.test(k))return 'Key'+k.toUpperCase();
   if(k==='Shift')return e.location===2?'ShiftRight':'ShiftLeft';
   if(k==='Control')return e.location===2?'ControlRight':'ControlLeft';
   const map={Enter:'Enter',Escape:'Escape',Tab:'Tab',ArrowUp:'ArrowUp',ArrowDown:'ArrowDown',ArrowLeft:'ArrowLeft',ArrowRight:'ArrowRight'};
@@ -688,18 +698,30 @@ const preventGameKeys=new Set([
   'KeyW','KeyA','KeyS','KeyD','KeyF','KeyE','KeyR','KeyQ',
   'Period','Comma','Quote','Semicolon','KeyP','KeyM','Escape'
 ]);
-function isImePacketEvent(e){
-  return (!e.code||e.code==='Unidentified')&&(e.keyCode===231||e.keyCode===229||Boolean(TELEX_KEY_MAP[e.key]));
+function isImePacketEvent(e,code,isUp){
+  const k=e.key||'';
+  return Boolean(
+    TELEX_KEY_MAP[k]||
+    (typeof k==='string'&&k.length===2&&(!e.code||e.code==='KeyA'||e.code==='Unidentified'))||
+    (e.code==='KeyA'&&code&&code!=='KeyA')||
+    ((!e.code||e.code==='Unidentified')&&(e.keyCode===231||e.keyCode===229))||
+    (!isUp&&code==='KeyA'&&(performance.now()-lastImeTime<25))
+  );
 }
 function onKeyDown(e){
   const tag=e.target&&e.target.tagName;
   if(S!=='play'&&(tag==='INPUT'||tag==='TEXTAREA'))return;
+  if(S==='play'&&!e.metaKey&&(e.code==='Backspace'||IGNORED_IME_KEYS.has(e.key||'')))e.preventDefault();
   const code=canonicalKey(e); if(!code)return;
-  if(S==='play'&&preventGameKeys.has(code))e.preventDefault();
-  const isImePacket=isImePacketEvent(e);
+  if(S==='play'&&!e.metaKey&&preventGameKeys.has(code))e.preventDefault();
+  const isImePacket=isImePacketEvent(e,code,false);
   const wasDown=keys.has(code); keys.add(code);
-  if(isImePacket)imeHoldUntil.set(code,performance.now()+650);
-  else imeHoldUntil.delete(code);
+  if(isImePacket){
+    const now=performance.now();
+    lastImeTime=now; lastImeKeyDown.set(code,now); imeHoldUntil.set(code,now+650);
+  }else{
+    imeHoldUntil.delete(code);
+  }
   if(!wasDown||!e.repeat)keyTime.set(code,++keySeq);
   if(S!=='play'||e.repeat)return;
   if(code==='Escape'||code==='KeyP'){ paused=!paused; syncPauseButton(); return; }
@@ -713,10 +735,12 @@ function onKeyDown(e){
   });
 }
 function onKeyUp(e){
+  if(S==='play'&&!e.metaKey&&(e.code==='Backspace'||IGNORED_IME_KEYS.has(e.key||'')))e.preventDefault();
   const code=canonicalKey(e); if(!code)return;
-  if(S==='play'&&preventGameKeys.has(code))e.preventDefault();
-  if(isImePacketEvent(e))return;
-  keys.delete(code); keyTime.delete(code); imeHoldUntil.delete(code);
+  if(S==='play'&&!e.metaKey&&preventGameKeys.has(code))e.preventDefault();
+  const isPhysicalNonA=Boolean(e.code&&e.code!=='KeyA'&&e.code!=='Unidentified');
+  if(!isPhysicalNonA&&(isImePacketEvent(e,code,true)||(performance.now()-(lastImeKeyDown.get(code)||0)<12)))return;
+  keys.delete(code); keyTime.delete(code); imeHoldUntil.delete(code); lastImeKeyDown.delete(code);
 }
 addEventListener('keydown',onKeyDown,{capture:true});
 addEventListener('keyup',onKeyUp,{capture:true});
@@ -745,12 +769,37 @@ try{
   }
 }catch(err){}
 
+function canStand(nx,ny){
+  const b={x:nx+8,y:ny+36,w:32,h:28};
+  return b.x>=368&&b.x+b.w<=1912&&b.y>=80&&b.y+b.h<=944&&!sol.some(s=>hit(b,s));
+}
 function mv(p,dx,dy){
+  const slideMax=Math.min(6,Math.hypot(dx,dy));
   for(const [ax,ay] of [[dx,0],[0,dy]]){
+    if(!ax&&!ay)continue;
     const nx=p.x+ax, ny=p.y+ay, b={x:nx+8,y:ny+36,w:32,h:28};
     if(b.x<368||b.x+b.w>1912||b.y<80||b.y+b.h>944)continue;
-    if(sol.some(s=>hit(b,s)))continue;
-    p.x=nx; p.y=ny;
+    const blocker=sol.find(s=>hit(b,s));
+    if(!blocker){ p.x=nx; p.y=ny; continue; }
+    if(ax&&!dy){
+      const oTop=(b.y+b.h)-blocker.y, oBot=(blocker.y+blocker.h)-b.y;
+      if(oTop>0&&oTop<=22&&oTop<=oBot){
+        const step=Math.min(slideMax,oTop);
+        if(canStand(p.x,p.y-step)){ p.y-=step; if(canStand(nx,p.y))p.x=nx; }
+      }else if(oBot>0&&oBot<=22){
+        const step=Math.min(slideMax,oBot);
+        if(canStand(p.x,p.y+step)){ p.y+=step; if(canStand(nx,p.y))p.x=nx; }
+      }
+    }else if(ay&&!dx){
+      const oLeft=(b.x+b.w)-blocker.x, oRight=(blocker.x+blocker.w)-b.x;
+      if(oLeft>0&&oLeft<=22&&oLeft<=oRight){
+        const step=Math.min(slideMax,oLeft);
+        if(canStand(p.x-step,p.y)){ p.x-=step; if(canStand(p.x,ny))p.y=ny; }
+      }else if(oRight>0&&oRight<=22){
+        const step=Math.min(slideMax,oRight);
+        if(canStand(p.x+step,p.y)){ p.x+=step; if(canStand(p.x,ny))p.y=ny; }
+      }
+    }
   }
 }
 
@@ -864,7 +913,7 @@ function upd(dt){
     const dx=axisDir(i,'l','r'), dy=axisDir(i,'u','d');
     if(dx||dy){ const n=Math.hypot(dx,dy); p.lx=dx/n; p.ly=dy/n; }
     const isSlow=slowT>0||p.slow>0;
-    const spd=(lv==0?336:312)*(speedT>0?1.65:1)*(isSlow?.48:1);
+    const spd=(lv==0?380:356)*(speedT>0?1.65:1)*(isSlow?.48:1);
     if(p.ds>0){ mv(p,p.lx*780*(speedT>0?1.25:1)*(isSlow?.7:1)*dt, p.ly*780*(speedT>0?1.25:1)*(isSlow?.7:1)*dt); p.wt+=dt; }
     else if(dx||dy){ mv(p,p.lx*spd*dt, p.ly*spd*dt); p.wt+=dt; }
     if(p.dashBuf>0){ p.dashBuf=Math.max(0,p.dashBuf-dt); if(dash(p))p.dashBuf=0; }
