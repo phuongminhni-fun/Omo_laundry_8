@@ -134,7 +134,7 @@ kbd { background: var(--wh); color: var(--db); padding: 2px 6px; border-radius: 
 
 <div id="app-container">
   <div id="splash" aria-label="Màn hình bắt đầu OMO Siêu Tốc">
-    <img id="splash-art" src="omo_homepage_splash.png" alt="Giáng Sinh Rộn Ràng — OMO Siêu Tốc 15 Phút">
+    <img id="splash-art" src="omo_homepage_splash.webp" alt="Giáng Sinh Rộn Ràng — OMO Siêu Tốc 15 Phút">
     <button id="splash-start" type="button" aria-label="Start — bắt đầu trò chơi"></button>
   </div>
   <!-- TITLE SCREEN OVERLAY -->
@@ -212,11 +212,11 @@ const SCALE = 4;
 const W = 1920;
 const H = 1080;
 const stage3Artwork=new Image(),stage4Artwork=new Image();
-stage3Artwork.src='omo_stage3_background.png';stage4Artwork.src='omo_stage4_background.png';
+stage3Artwork.src='omo_stage3_background.webp';stage4Artwork.src='omo_stage4_background.webp';
 stage3Artwork.onload=()=>{if(S==='play'&&lv===2)buildBg();};
 stage4Artwork.onload=()=>{if(S==='play'&&lv===3)buildBg();};
 const auroraArtwork=new Image();
-auroraArtwork.src='omo_aurora_reference.png';
+auroraArtwork.src='omo_aurora_reference.webp';
 auroraArtwork.onload=()=>{if(S==='play'&&lv===4)buildBg();const grid=document.getElementById('lvGrid');if(grid)grid.querySelectorAll('.lv-thumb').forEach((c,i)=>drawStagePreview(c,i));};
 
 // Offscreen background pre-render buffer (1920x1080)
