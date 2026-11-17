@@ -21,28 +21,30 @@
       let audioContext;
 
       game.playMusicNote = (frequency, duration) => {
-        if (!game.bgmOn || game.S !== 'play' || game.paused || game.cd > 0) return;
+        if (!game.bgmOn || game.S !== 'play' || game.paused) return;
         try {
           if (typeof game.initAudio === 'function') game.initAudio();
           const AudioContext = game.AudioContext || game.webkitAudioContext;
           const ctx = game.AC || audioContext || (audioContext = new AudioContext());
           if (!ctx) return;
-          if (ctx.state === 'suspended') ctx.resume();
+          if (ctx.state === 'suspended' || ctx.state === 'interrupted') ctx.resume();
 
           const now = ctx.currentTime;
           const note = melody[noteIndex++ % melody.length];
           const length = Math.max(0.06, duration);
+          const atk = Math.min(0.02, length * 0.25);
           const lead = ctx.createOscillator();
           const leadGain = ctx.createGain();
           lead.type = 'triangle';
           lead.frequency.setValueAtTime(note, now);
           leadGain.gain.setValueAtTime(0.0001, now);
-          leadGain.gain.linearRampToValueAtTime(0.045, now + 0.025);
-          leadGain.gain.exponentialRampToValueAtTime(0.0001, now + length * 0.88);
+          leadGain.gain.linearRampToValueAtTime(0.14, now + atk);
+          leadGain.gain.setValueAtTime(0.10, now + Math.max(atk + 0.005, length * 0.65));
+          leadGain.gain.exponentialRampToValueAtTime(0.0001, now + length * 0.92);
           lead.connect(leadGain);
           leadGain.connect(ctx.destination);
           lead.start(now);
-          lead.stop(now + length * 0.9);
+          lead.stop(now + length * 0.94);
 
           // Soft octave bass accompaniment.
           const bass = ctx.createOscillator();
@@ -50,12 +52,13 @@
           bass.type = 'sine';
           bass.frequency.setValueAtTime(note / 2, now);
           bassGain.gain.setValueAtTime(0.0001, now);
-          bassGain.gain.linearRampToValueAtTime(0.018, now + 0.03);
-          bassGain.gain.exponentialRampToValueAtTime(0.0001, now + length * 0.82);
+          bassGain.gain.linearRampToValueAtTime(0.075, now + atk);
+          bassGain.gain.setValueAtTime(0.05, now + Math.max(atk + 0.005, length * 0.6));
+          bassGain.gain.exponentialRampToValueAtTime(0.0001, now + length * 0.85);
           bass.connect(bassGain);
           bassGain.connect(ctx.destination);
           bass.start(now);
-          bass.stop(now + length * 0.84);
+          bass.stop(now + length * 0.87);
         } catch (error) {
           // Audio may be unavailable until the player interacts with the page.
         }
