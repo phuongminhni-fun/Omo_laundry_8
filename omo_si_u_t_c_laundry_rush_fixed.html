@@ -246,6 +246,7 @@ const MAXI=3;
 let slowT=0, speedT=0, multT=0, puddles=[], carryT=0;
 let best=LV.map(()=>0); try{ const saved=JSON.parse(localStorage.getItem('omo_v7_best')); if(Array.isArray(saved)) best=LV.map((_,i)=>Number(saved[i])||0); }catch(e){}
 let mode=2, S='title', paused=false, keys=new Set(), pl, st, obs, sol, orders, fx, score, tl, spT, oid, act, lv=0, cd=0, last=0, AC, LF='', bgmOn=true, bgmTimer=0, bgmStep=0, reindeers=[], polarBear=null, gifts=[], giftClock=16, boostText='', boostTextT=0, scoreMult=1;
+Object.defineProperties(window,{bgmOn:{get:()=>bgmOn,set:v=>{bgmOn=Boolean(v);}},S:{get:()=>S},paused:{get:()=>paused},cd:{get:()=>cd},AC:{get:()=>AC}});
 
 // Dynamic Snowfall System (Scaled for 1920x1080 HD)
 const snow=Array.from({length:120}, (_,i)=>({
@@ -281,6 +282,7 @@ function startHomeJingle(){
   const lead=[784,0,659,0,784,988,880,0,784,0,659,0,587,659,784,0,880,0,784,659,587,0,523,0,587,659,784,0,988,880,784,0];
   const bass=[130.8,0,196,0,174.6,0,220,0];
   homeRockTimer=setInterval(()=>{
+    if(!bgmOn||document.hidden||S==='play')return;
     const step=homeRockStep++%lead.length, f=lead[step];
     if(f)beep(f,.20,'triangle',.028);
     if(step%4===0)beep(bass[Math.floor(step/4)%bass.length],.22,'square',.025);
@@ -438,7 +440,7 @@ function drawStagePreview(cvEl, idx){
 }
 
 function showLv(){
-  initAudio(); S='title'; $('over').classList.add('hide'); $('game').style.display='none'; $('title').classList.add('hide');
+  initAudio(); if(!homeRockTimer)startHomeJingle(); S='title'; $('over').classList.add('hide'); $('game').style.display='none'; $('title').classList.add('hide');
   const L=$('lv'); L.classList.remove('hide');
   L.innerHTML='<h1 style="font-size:48px; margin:0 0 12px;">CHỌN MÀN CHƠI NOEL</h1><div class="lv-grid" id="lvGrid"></div><button class="btn alt" id="backTitle">◀ ĐỔI NHÂN VẬT</button>';
   const grid=$('lvGrid');

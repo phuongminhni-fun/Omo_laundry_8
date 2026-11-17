@@ -5,7 +5,7 @@
   function applyMenuFit() {
     try {
       const doc = frame.contentDocument;
-      if (!doc || !doc.head || !doc.body) return;
+      if (!doc || !doc.head || !doc.body || !doc.getElementById('app-container')) return;
 
       if (!doc.getElementById('site-fit-layout')) {
         const style = doc.createElement('style');
@@ -118,7 +118,7 @@
             ctx.fillStyle = '#13d5ef'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left';
             ctx.fillText('GAMEPLAY · 0' + (index + 1), 15, 23);
           };
-          [stage3Artwork, stage4Artwork, auroraArtwork].forEach(image => image && image.addEventListener('load', () => document.querySelectorAll('.lv-thumb').forEach((canvas, i) => drawStagePreview(canvas, i))));
+          [typeof stage3Artwork !== 'undefined' ? stage3Artwork : null, typeof stage4Artwork !== 'undefined' ? stage4Artwork : null, typeof auroraArtwork !== 'undefined' ? auroraArtwork : null].forEach(image => image && image.addEventListener('load', () => document.querySelectorAll('.lv-thumb').forEach((canvas, i) => drawStagePreview(canvas, i))));
         `;
         doc.body.appendChild(patch);
       }
