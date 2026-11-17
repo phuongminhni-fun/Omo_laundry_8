@@ -244,7 +244,7 @@ LV.forEach(l=>l.burnT=20);
 
 const MAXI=3;
 let slowT=0, speedT=0, multT=0, puddles=[], carryT=0;
-let best=[0,0,0]; try{ best=JSON.parse(localStorage.getItem('omo_v7_best'))||[0,0,0] }catch(e){}
+let best=LV.map(()=>0); try{ const saved=JSON.parse(localStorage.getItem('omo_v7_best')); if(Array.isArray(saved)) best=LV.map((_,i)=>Number(saved[i])||0); }catch(e){}
 let mode=2, S='title', paused=false, keys=new Set(), pl, st, obs, sol, orders, fx, score, tl, spT, oid, act, lv=0, cd=0, last=0, AC, LF='', bgmOn=true, bgmTimer=0, bgmStep=0, reindeers=[], polarBear=null, gifts=[], giftClock=16, boostText='', boostTextT=0, scoreMult=1;
 
 // Dynamic Snowfall System (Scaled for 1920x1080 HD)
@@ -416,7 +416,7 @@ $('m1').onclick=()=>{ mode=1; $('m1').classList.add('on'); $('m2').classList.rem
 $('m2').onclick=()=>{ mode=2; $('m2').classList.add('on'); $('m1').classList.remove('on'); };
 $('splash-start').addEventListener('click',()=>{initAudio();startHomeJingle();$('splash').classList.add('hide');showLv();});
 const stars=(s,l)=>s>=LV[l].g[2]?3:s>=LV[l].g[1]?2:s>=LV[l].g[0]?1:0;
-const sstr=n=>'★'.repeat(n)+'☆'.repeat(3-n);
+const sstr=n=>{const k=Math.max(0,Math.min(3,Number(n)||0));return '★'.repeat(k)+'☆'.repeat(3-k);};
 
 // Level Thumbnail Pixel Art Generator
 function drawStagePreview(cvEl, idx){
@@ -450,7 +450,7 @@ function showLv(){
     'Cực Quang Vĩnh Cửu • Dải lụa neon uốn lượn dưới bầu trời sao lấp lánh'
   ];
   LV.forEach((l,i)=>{
-    const locked=i>0&&best[i-1]<1;
+    const locked=i>0&&(best[i-1]||0)<1;
     const card=document.createElement('div');
     card.className='lv-card'+(locked?' locked':'');
     card.innerHTML=`
@@ -754,7 +754,7 @@ function mv(p,dx,dy){
 
 function end(){
   S='over'; const n=stars(score,lv);
-  if(n>best[lv]){ best[lv]=n; try{localStorage.setItem('omo_v7_best',JSON.stringify(best))}catch(e){} }
+  if(n>(best[lv]||0)){ best[lv]=n; try{localStorage.setItem('omo_v7_best',JSON.stringify(best))}catch(e){} }
   $('ot').textContent=n?'Hoàn thành!':'Chưa đạt!';
   $('os').textContent='Điểm đạt được: '+score+' / ★ '+LV[lv].g[0];
   $('ost').textContent=sstr(n);
